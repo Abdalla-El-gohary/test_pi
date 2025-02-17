@@ -2,7 +2,7 @@
 import time
 
 class AdaptiveCruiseControl:
-    def __init__(self, lidar, safe_distance=2000, max_speed=100, min_speed=0):
+    def __init__(self, lidar, safe_distance=2000, max_speed=2.5, min_speed=0):
         ''' Initializes the Adaptive Cruise Control '''
         self.lidar = lidar
         self.safe_distance = safe_distance  # Safe following distance in mm

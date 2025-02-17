@@ -6,7 +6,7 @@ import time
 import zmq
 
 if __name__ == '__main__':
-    lidar = LidarInterface(port='/dev/ttyUSB1')
+    lidar = LidarInterface(port='/dev/ttyUSB0')
     acc = AdaptiveCruiseControl(lidar)
     
     # ZeroMQ Context and Socket

@@ -3,10 +3,11 @@
 import serial
 import struct
 import numpy as np
-
+import time
 class RobotController:
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600, kinematics=None):
         self.serial_connection = serial.Serial(port, baudrate, timeout=1000)
+        time.sleep(5)
         self.kinematics = kinematics
         self.command = {'vx': 0.0, 'vy': 0.0, 'w': 0.0}
         self.linear_speed = 0.1

@@ -12,7 +12,7 @@ wheel_radius = 0.04
 lx = 0.13  
 ly = 0.15  
 
-my_port = "/dev/ttyUSB0"
+my_port = "/dev/ttyUSB1"
 my_baudrate = 115200
 
 kinematic = kinematicModel(wheel_radius, lx, ly)
@@ -21,15 +21,16 @@ robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic
 # ZeroMQ Context and Sockets
 context = zmq.Context()
 
-pi_ip = "192.168.247.77"
+host_eth_ip = "10.118.142.1"
+host_ip= "192.168.247.77"
 
 # Socket for ACC speed
 acc_socket = context.socket(zmq.REQ)
-acc_socket.connect("tcp://"+pi_ip+":5555")  # Connect to ACC Server
+acc_socket.connect("tcp://localhost:5555")  # Connect to ACC Server
 
 # Socket for speed commands
 speed_socket = context.socket(zmq.SUB)
-speed_socket.connect("tcp://"+pi_ip+":5556")  # Connect to speed publisher
+speed_socket.connect("tcp://"+host_ip+":5556")  # Connect to speed publisher
 speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
 
 if __name__ == "__main__":
