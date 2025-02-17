@@ -1,11 +1,11 @@
 #!/usr/bin/env python3 
 
 import serial
-from keyboard.keyboard_control import KeyboardControl
 from kinematics.model import kinematicModel
 from robot_controller.controller import RobotController
 from time import sleep
 import zmq
+import json  # Required for JSON parsing
 
 # Model specifications
 wheel_radius = 0.04  
@@ -17,28 +17,42 @@ my_baudrate = 115200
 
 kinematic = kinematicModel(wheel_radius, lx, ly)
 robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic)
-keyboard = KeyboardControl()
 
-# ZeroMQ Context and Socket
+# ZeroMQ Context and Sockets
 context = zmq.Context()
-socket = context.socket(zmq.REQ)
-socket.connect("tcp://localhost:5555")  # Connect to ACC Server
+
+pi_ip = "192.168.247.77"
+
+# Socket for ACC speed
+acc_socket = context.socket(zmq.REQ)
+acc_socket.connect("tcp://"+pi_ip+":5555")  # Connect to ACC Server
+
+# Socket for speed commands
+speed_socket = context.socket(zmq.SUB)
+speed_socket.connect("tcp://"+pi_ip+":5556")  # Connect to speed publisher
+speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
 
 if __name__ == "__main__":
     try:
         while True:
-            # Request speed from ACC
-            socket.send(b"GET_SPEED")
-            acc_speed = int(socket.recv().decode())
-            print(f"ACC Speed: {acc_speed}")
+            # Receive speed commands from the publisher as a string
+            speeds_str = speed_socket.recv()
+            print(f"Received Speeds (String): {speeds_str}")
+            
+            # Convert the JSON string to a dictionary
+            speeds = json.loads(speeds_str.decode("utf-8"))
+            print(f"Received Speeds (Dict): {speeds}")
 
-            # Get keyboard inputs
-            speeds = keyboard.return_speeds()
+            # Request speed from ACC
+            acc_socket.send(b"GET_SPEED")
+            acc_speed = int(acc_socket.recv().decode())
+            print(f"ACC Speed: {acc_speed}")
 
             # Override the vx (forward speed) with ACC speed
             speeds['vx'] = min(speeds['vx'], acc_speed)
-            print(f"Speeds: {speeds}")
+            print(f"Final Speeds: {speeds}")
 
+            # Update the robot's movement commands
             robot.update_command(speeds['vx'], speeds['vy'], speeds['w'])
             robot.send_speeds_to_serial()
 
