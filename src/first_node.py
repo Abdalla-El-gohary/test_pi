@@ -27,6 +27,6 @@ if __name__ == "__main__":
 
             # Send as string
             publisher.send(speeds_str.encode("utf-8"))  
-            time.sleep(0.3)
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print("Exiting keyboard publisher.")

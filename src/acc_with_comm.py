@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 # Send the current speed to the Movement Controller
                 socket.send(str(acc.current_speed).encode())
             
-            time.sleep(0.1)
+            time.sleep(0.2)
     except KeyboardInterrupt:
         print('Stopping...')
     finally:

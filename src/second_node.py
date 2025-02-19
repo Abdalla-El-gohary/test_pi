@@ -57,7 +57,7 @@ if __name__ == "__main__":
             robot.update_command(speeds['vx'], speeds['vy'], speeds['w'])
             robot.send_speeds_to_serial()
 
-            sleep(0.1)
+            sleep(0.3)
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     except KeyboardInterrupt:
