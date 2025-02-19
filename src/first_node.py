@@ -9,8 +9,9 @@ keyboard = KeyboardControl()
 # ZeroMQ Context and Publisher
 context = zmq.Context()
 publisher = context.socket(zmq.PUB)
-pi_ip = "192.168.247.77"
-publisher.bind("tcp://"+pi_ip+":5556")  # Bind to a port for broadcasting
+host_eth_ip = "10.118.142.1"
+host_ip = "192.168.247.77"
+publisher.bind("tcp://"+host_ip+":5556")  # Bind to a port for broadcasting
 
 if __name__ == "__main__":
     try:
@@ -27,6 +28,6 @@ if __name__ == "__main__":
 
             # Send as string
             publisher.send(speeds_str.encode("utf-8"))  
-            time.sleep(0.1)
+            time.sleep(0.5)
     except KeyboardInterrupt:
         print("Exiting keyboard publisher.")
