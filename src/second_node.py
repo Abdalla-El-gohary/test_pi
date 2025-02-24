@@ -5,7 +5,7 @@ from kinematics.model import kinematicModel
 from robot_controller.controller import RobotController
 from time import sleep
 import zmq
-import json  # Required for JSON parsing
+import json  
 
 # Model specifications
 wheel_radius = 0.04  
@@ -21,7 +21,6 @@ robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic
 # features flags
 acc_flag = True
 
-
 # ZeroMQ Context and Sockets
 context = zmq.Context()
 
@@ -29,42 +28,30 @@ host_eth_ip = "10.118.142.1"
 host_ip= "192.168.66.77"
 
 if acc_flag:
-    # Socket for ACC speed
     acc_socket = context.socket(zmq.REQ)
-    acc_socket.connect("tcp://localhost:5555")  # Connect to ACC Server
+    acc_socket.connect("tcp://localhost:5555")  
+    poller = zmq.Poller()
+    poller.register(acc_socket, zmq.POLLIN)
 
-# Socket for speed commands
 speed_socket = context.socket(zmq.SUB)
-speed_socket.connect("tcp://"+host_ip+":5556")  # Connect to speed publisher
-speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
+speed_socket.connect("tcp://"+host_ip+":5556")  
+speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
 
 if __name__ == "__main__":
     try:
         while True:
-            # Receive speed commands from the publisher as a string
             speeds_str = speed_socket.recv()
-            print(f"Received Speeds (String): {speeds_str}")
-            
-            # Convert the JSON string to a dictionary
             speeds = json.loads(speeds_str.decode("utf-8"))
-            print(f"Received Speeds (Dict): {speeds}")
-
-            if acc_flag:
-                # Request speed from ACC
-                acc_socket.send(b"GET_SPEED")
-                acc_speed = int(acc_socket.recv().decode())
-                print(f"ACC Speed: {acc_speed}")
-
-                # Override the vx (forward speed) with ACC speed
-                speeds['vx'] = min(speeds['vx'], acc_speed)
-
             
-            print(f"Final Speeds: {speeds}")
-
-            # Update the robot's movement commands
+            if acc_flag:
+                acc_socket.send(b"GET_SPEED")
+                socks = dict(poller.poll(500))  
+                if acc_socket in socks and socks[acc_socket] == zmq.POLLIN:
+                    acc_speed = int(acc_socket.recv().decode())
+                    speeds['vx'] = min(speeds['vx'], acc_speed)
+            
             robot.update_command(speeds['vx'], speeds['vy'], speeds['w'])
             robot.send_speeds_to_serial()
-
             sleep(0.3)
     except serial.SerialException as e:
         print(f"Serial error: {e}")
@@ -73,3 +60,7 @@ if __name__ == "__main__":
     finally:
         if robot.serial_connection.is_open:
             robot.serial_connection.close()
+        speed_socket.close()
+        if acc_flag:
+            acc_socket.close()
+        context.term()

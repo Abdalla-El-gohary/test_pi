@@ -18,15 +18,18 @@ if __name__ == '__main__':
         lidar.start()
         while lidar.running:
             acc.update_speed()
-
-            # Wait for a request from the Movement Controller
-            message = socket.recv()
-            if message == b"GET_SPEED":
-                # Send the current speed to the Movement Controller
-                socket.send(str(acc.current_speed).encode())
+            
+            try:
+                message = socket.recv(flags=zmq.NOBLOCK)
+                if message == b"GET_SPEED":
+                    socket.send(str(acc.current_speed).encode())
+            except zmq.Again:
+                pass
             
             time.sleep(0.2)
     except KeyboardInterrupt:
         print('Stopping...')
     finally:
         lidar.stop()
+        socket.close()
+        context.term()
