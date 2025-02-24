@@ -27,27 +27,28 @@ context = zmq.Context()
 host_eth_ip = "10.118.142.1"
 host_ip= "192.168.66.77"
 
-if acc_flag:
+def setup_acc_socket():
+    """Creates and connects the acc_socket."""
+    global acc_socket
     acc_socket = context.socket(zmq.REQ)
-    acc_socket.connect("tcp://localhost:5555")  
+    acc_socket.connect("tcp://localhost:5555")
     acc_socket.setsockopt(zmq.RCVTIMEO, 500)  # Timeout for receiving ACC speed
-    poller = zmq.Poller()
-    poller.register(acc_socket, zmq.POLLIN)
+
+if acc_flag:
+    setup_acc_socket()
 
 speed_socket = context.socket(zmq.SUB)
 speed_socket.connect("tcp://"+host_ip+":5556")  
 speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
 speed_socket.setsockopt(zmq.RCVTIMEO, 500)  # Timeout for receiving speeds
 
-def reconnect_speed_socket():
-    """Reconnects to the speed socket if disconnected."""
-    global speed_socket
-    print("Reconnecting to speed socket...")
-    speed_socket.close()
-    speed_socket = context.socket(zmq.SUB)
-    speed_socket.connect("tcp://"+host_ip+":5556")  
-    speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
-    speed_socket.setsockopt(zmq.RCVTIMEO, 500)
+def reconnect_acc_socket():
+    """Reconnects to the ACC socket if disconnected."""
+    global acc_socket
+    print("Reconnecting to ACC socket...")
+    acc_socket.close()
+    setup_acc_socket()
+    sleep(1)  # Allow time for reconnection
 
 if __name__ == "__main__":
     try:
@@ -57,9 +58,9 @@ if __name__ == "__main__":
                 speeds = json.loads(speeds_str.decode("utf-8"))
             except zmq.Again:
                 print("Warning: No speed data received. Skipping this cycle.")
-                continue  # Skip iteration if no data is received
+                continue  
             except json.JSONDecodeError:
-                print("Warning: Received invalid JSON data. Skipping this cycle.")
+                print("Warning: Invalid JSON data. Skipping this cycle.")
                 continue
 
             if acc_flag:
@@ -69,6 +70,9 @@ if __name__ == "__main__":
                     speeds['vx'] = min(speeds['vx'], acc_speed)
                 except zmq.Again:
                     print("Warning: No ACC speed received. Using last known speed.")
+                except zmq.ZMQError:
+                    print("Error: ACC socket in invalid state. Reconnecting...")
+                    reconnect_acc_socket()
                 except ValueError:
                     print("Warning: Invalid ACC speed received. Skipping update.")
 
@@ -81,7 +85,7 @@ if __name__ == "__main__":
                     robot.serial_connection.open()
             except serial.SerialException as e:
                 print(f"Serial error: {e}")
-                sleep(1)  # Wait before retrying
+                sleep(1)
 
             sleep(0.3)
     except serial.SerialException as e:
