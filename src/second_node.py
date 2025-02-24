@@ -39,6 +39,16 @@ speed_socket.connect("tcp://"+host_ip+":5556")
 speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
 speed_socket.setsockopt(zmq.RCVTIMEO, 500)  # Timeout for receiving speeds
 
+def reconnect_speed_socket():
+    """Reconnects to the speed socket if disconnected."""
+    global speed_socket
+    print("Reconnecting to speed socket...")
+    speed_socket.close()
+    speed_socket = context.socket(zmq.SUB)
+    speed_socket.connect("tcp://"+host_ip+":5556")  
+    speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
+    speed_socket.setsockopt(zmq.RCVTIMEO, 500)
+
 if __name__ == "__main__":
     try:
         while True:
@@ -48,6 +58,9 @@ if __name__ == "__main__":
             except zmq.Again:
                 print("Warning: No speed data received. Skipping this cycle.")
                 continue  # Skip iteration if no data is received
+            except json.JSONDecodeError:
+                print("Warning: Received invalid JSON data. Skipping this cycle.")
+                continue
 
             if acc_flag:
                 try:
@@ -56,9 +69,20 @@ if __name__ == "__main__":
                     speeds['vx'] = min(speeds['vx'], acc_speed)
                 except zmq.Again:
                     print("Warning: No ACC speed received. Using last known speed.")
+                except ValueError:
+                    print("Warning: Invalid ACC speed received. Skipping update.")
 
-            robot.update_command(speeds.get('vx', 0), speeds.get('vy', 0), speeds.get('w', 0))
-            robot.send_speeds_to_serial()
+            try:
+                if robot.serial_connection.is_open:
+                    robot.update_command(speeds.get('vx', 0), speeds.get('vy', 0), speeds.get('w', 0))
+                    robot.send_speeds_to_serial()
+                else:
+                    print("Serial connection lost. Attempting to reconnect...")
+                    robot.serial_connection.open()
+            except serial.SerialException as e:
+                print(f"Serial error: {e}")
+                sleep(1)  # Wait before retrying
+
             sleep(0.3)
     except serial.SerialException as e:
         print(f"Serial error: {e}")
