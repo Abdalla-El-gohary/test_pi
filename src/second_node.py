@@ -21,6 +21,7 @@ robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic
 # features flags
 acc_flag = True
 
+
 # ZeroMQ Context and Sockets
 context = zmq.Context()
 
@@ -30,11 +31,11 @@ host_ip= "192.168.66.77"
 if acc_flag:
     # Socket for ACC speed
     acc_socket = context.socket(zmq.REQ)
-    acc_socket.connect("udp://localhost:5555")  # Connect to ACC Server
+    acc_socket.connect("tcp://localhost:5555")  # Connect to ACC Server
 
 # Socket for speed commands
 speed_socket = context.socket(zmq.SUB)
-speed_socket.connect("udp://"+host_ip+":5556")  # Connect to speed publisher
+speed_socket.connect("tcp://"+host_ip+":5556")  # Connect to speed publisher
 speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
 
 if __name__ == "__main__":
