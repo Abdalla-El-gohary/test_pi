@@ -18,19 +18,23 @@ my_baudrate = 115200
 kinematic = kinematicModel(wheel_radius, lx, ly)
 robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic)
 
+# features flags
+acc_flag = True
+
 # ZeroMQ Context and Sockets
 context = zmq.Context()
 
 host_eth_ip = "10.118.142.1"
-host_ip= "192.168.247.77"
+host_ip= "192.168.66.77"
 
-# Socket for ACC speed
-acc_socket = context.socket(zmq.REQ)
-acc_socket.connect("tcp://localhost:5555")  # Connect to ACC Server
+if acc_flag:
+    # Socket for ACC speed
+    acc_socket = context.socket(zmq.REQ)
+    acc_socket.connect("udp://localhost:5555")  # Connect to ACC Server
 
 # Socket for speed commands
 speed_socket = context.socket(zmq.SUB)
-speed_socket.connect("tcp://"+host_ip+":5556")  # Connect to speed publisher
+speed_socket.connect("udp://"+host_ip+":5556")  # Connect to speed publisher
 speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
 
 if __name__ == "__main__":
@@ -44,13 +48,16 @@ if __name__ == "__main__":
             speeds = json.loads(speeds_str.decode("utf-8"))
             print(f"Received Speeds (Dict): {speeds}")
 
-            # Request speed from ACC
-            acc_socket.send(b"GET_SPEED")
-            acc_speed = int(acc_socket.recv().decode())
-            print(f"ACC Speed: {acc_speed}")
+            if acc_flag:
+                # Request speed from ACC
+                acc_socket.send(b"GET_SPEED")
+                acc_speed = int(acc_socket.recv().decode())
+                print(f"ACC Speed: {acc_speed}")
 
-            # Override the vx (forward speed) with ACC speed
-            speeds['vx'] = min(speeds['vx'], acc_speed)
+                # Override the vx (forward speed) with ACC speed
+                speeds['vx'] = min(speeds['vx'], acc_speed)
+
+            
             print(f"Final Speeds: {speeds}")
 
             # Update the robot's movement commands

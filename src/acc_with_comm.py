@@ -12,7 +12,7 @@ if __name__ == '__main__':
     # ZeroMQ Context and Socket
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind("tcp://*:5555")  # Listen on port 5555
+    socket.bind("udp://*:5555")  # Listen on port 5555
 
     try:
         lidar.start()
