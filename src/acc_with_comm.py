@@ -9,7 +9,7 @@ if __name__ == '__main__':
     lidar = LidarInterface(port='/dev/ttyUSB0')
     acc = AdaptiveCruiseControl(lidar)
     
-    # ZeroMQ Context and Socket
+    # ZeroMQ Context
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind("tcp://*:5555")  # Listen on port 5555
@@ -19,14 +19,16 @@ if __name__ == '__main__':
         while lidar.running:
             acc.update_speed()
 
-            # Wait for a request from the Movement Controller
-            message = socket.recv()
-            if message == b"GET_SPEED":
-                # Send the current speed to the Movement Controller
-                socket.send(str(acc.current_speed).encode())
-            
+            # Check if there's a request to avoid blocking
+            if socket.poll(100):  # 100ms timeout
+                message = socket.recv()
+                if message == b"GET_SPEED":
+                    socket.send(str(acc.current_speed).encode())
+
             time.sleep(0.2)
     except KeyboardInterrupt:
         print('Stopping...')
     finally:
         lidar.stop()
+        socket.close()
+        context.term()
