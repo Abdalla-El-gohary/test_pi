@@ -103,7 +103,7 @@ if __name__ == "__main__":
                 print(f"Serial error: {e}")
                 sleep(1)  # Wait before retrying
 
-            sleep(0.3)
+            sleep(0.1)
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     except KeyboardInterrupt:
