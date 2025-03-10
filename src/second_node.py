@@ -76,8 +76,12 @@ if __name__ == "__main__":
                         reconnect_acc_socket()
                     
                     acc_socket.send(b"GET_SPEED")
-                    acc_speed = int(acc_socket.recv().decode())  # Ensure response received
-                    speeds['vx'] = min(speeds['vx'], acc_speed)
+                    response = acc_socket.recv().decode().strip()  # Ensure response received
+                    if response:
+                        
+                            acc_speed = float(response)
+                            speeds['vx'] = min(speeds['vx'], acc_speed)
+                        
                 except zmq.Again:
                     print("Warning: No ACC speed received. Using last known speed.")
                 except zmq.ZMQError:
