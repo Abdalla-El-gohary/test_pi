@@ -18,7 +18,7 @@ class AdaptiveCruiseControl:
         else:
             # Safe to accelerate
             speed = self.max_speed
-        return int(speed)
+        return speed
     
     def update_speed(self):
         ''' Updates the speed of the vehicle '''
