@@ -21,7 +21,7 @@ robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic
 # ZeroMQ Context
 context = zmq.Context()
 
-host_ip = "192.168.66.77"
+host_ip = "192.168.242.77"
 
 # Set up Speed Subscriber (Non-Blocking)
 speed_socket = context.socket(zmq.SUB)

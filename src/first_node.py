@@ -10,7 +10,7 @@ keyboard = KeyboardControl()
 # ZeroMQ Context and Publisher
 context = zmq.Context()
 publisher = context.socket(zmq.PUB)
-host_ip = "192.168.66.77"
+host_ip = "192.168.242.77"
 publisher.bind(f"tcp://{host_ip}:5556")  # Bind to a port for broadcasting
 
 if __name__ == "__main__":
