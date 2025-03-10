@@ -45,7 +45,7 @@ def reconnect_speed_socket():
     speed_socket = context.socket(zmq.SUB)
     speed_socket.connect("tcp://" + host_ip + ":5556")  
     speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
-    speed_socket.setsockopt(zmq.RCVTIMEO, 500)
+    speed_socket.setsockopt(zmq.RCVTIMEO, 1000)
 
 def reconnect_acc_socket():
     """Reconnects to the ACC socket if disconnected."""
@@ -57,6 +57,7 @@ def reconnect_acc_socket():
     acc_socket.setsockopt(zmq.RCVTIMEO, 500)
 
 if __name__ == "__main__":
+    speeds = {'vx': 0.0, 'vy': 0.0, 'w': 0.0}
     try:
         while True:
             try:
@@ -64,10 +65,10 @@ if __name__ == "__main__":
                 speeds = json.loads(speeds_str.decode("utf-8"))
             except zmq.Again:
                 print("Warning: No speed data received. Skipping this cycle.")
-                continue  # Skip iteration if no data is received
+                # continue  # Skip iteration if no data is received
             except json.JSONDecodeError:
                 print("Warning: Received invalid JSON data. Skipping this cycle.")
-                continue
+                # continue
 
             if acc_flag:
                 try:
