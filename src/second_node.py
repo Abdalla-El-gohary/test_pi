@@ -18,72 +18,93 @@ my_baudrate = 115200
 kinematic = kinematicModel(wheel_radius, lx, ly)
 robot = RobotController(port=my_port, baudrate=my_baudrate, kinematics=kinematic)
 
-# ZeroMQ Context
+# Features flags
+acc_flag = True
+
+# ZeroMQ Context and Sockets
 context = zmq.Context()
 
+host_eth_ip = "10.118.142.1"
 host_ip = "192.168.242.77"
 
-# Set up Speed Subscriber (Non-Blocking)
+if acc_flag:
+    acc_socket = context.socket(zmq.REQ)
+    acc_socket.connect("tcp://localhost:5555")  
+    acc_socket.setsockopt(zmq.RCVTIMEO, 500)  # Timeout for receiving ACC speed
+
 speed_socket = context.socket(zmq.SUB)
-speed_socket.connect(f"tcp://{host_ip}:5556")  
+speed_socket.connect("tcp://" + host_ip + ":5556")  
 speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
 speed_socket.setsockopt(zmq.RCVTIMEO, 500)  # Timeout for receiving speeds
-speed_socket.setsockopt(zmq.LINGER, 0)  # Prevents blocking on exit
 
-# Adaptive Cruise Control (ACC) Requester
-acc_socket = context.socket(zmq.REQ)
-acc_socket.connect("tcp://localhost:5555")  
-acc_socket.setsockopt(zmq.RCVTIMEO, 500)  # 500ms timeout to prevent blocking
-acc_socket.setsockopt(zmq.LINGER, 0)
+def reconnect_speed_socket():
+    """Reconnects to the speed socket if disconnected."""
+    global speed_socket
+    print("Reconnecting to speed socket...")
+    speed_socket.close()
+    speed_socket = context.socket(zmq.SUB)
+    speed_socket.connect("tcp://" + host_ip + ":5556")  
+    speed_socket.setsockopt_string(zmq.SUBSCRIBE, '')  
+    speed_socket.setsockopt(zmq.RCVTIMEO, 500)
 
-# Use a poller to avoid blocking
-poller = zmq.Poller()
-poller.register(speed_socket, zmq.POLLIN)
-poller.register(acc_socket, zmq.POLLIN)
+def reconnect_acc_socket():
+    """Reconnects to the ACC socket if disconnected."""
+    global acc_socket
+    print("Reconnecting ACC socket...")
+    acc_socket.close()
+    acc_socket = context.socket(zmq.REQ)
+    acc_socket.connect("tcp://localhost:5555")
+    acc_socket.setsockopt(zmq.RCVTIMEO, 500)
 
 if __name__ == "__main__":
     try:
         while True:
-            speeds = {'vx': 0, 'vy': 0, 'w': 0}  # Default speed values
-
-            # Check if speed data is available
             try:
-                socks = dict(poller.poll(500))  # Wait for 500ms
-                if speed_socket in socks:
-                    speeds_str = speed_socket.recv()
-                    speeds = json.loads(speeds_str.decode("utf-8"))
+                speeds_str = speed_socket.recv()
+                speeds = json.loads(speeds_str.decode("utf-8"))
             except zmq.Again:
-                print("No speed data received. Skipping this cycle.")
+                print("Warning: No speed data received. Skipping this cycle.")
+                continue  # Skip iteration if no data is received
             except json.JSONDecodeError:
-                print("Invalid JSON data. Skipping.")
+                print("Warning: Received invalid JSON data. Skipping this cycle.")
+                continue
 
-            # Request ACC speed if needed
-            try:
-                acc_socket.send(b"GET_SPEED")
-                if acc_socket in socks:
-                    acc_speed = int(acc_socket.recv().decode())
-                    speeds['vx'] = min(speeds['vx'], acc_speed)  # Limit speed
-            except zmq.Again:
-                print("ACC speed request timed out.")
-            except ValueError:
-                print("Invalid ACC speed received.")
+            if acc_flag:
+                try:
+                    if acc_socket.closed:
+                        reconnect_acc_socket()
+                    
+                    acc_socket.send(b"GET_SPEED")
+                    acc_speed = int(acc_socket.recv().decode())  # Ensure response received
+                    speeds['vx'] = min(speeds['vx'], acc_speed)
+                except zmq.Again:
+                    print("Warning: No ACC speed received. Using last known speed.")
+                except zmq.ZMQError:
+                    print("Error communicating with ACC. Reconnecting...")
+                    reconnect_acc_socket()
+                except ValueError:
+                    print("Warning: Invalid ACC speed received. Skipping update.")
 
-            # Send speeds to the robot
             try:
                 if robot.serial_connection.is_open:
-                    robot.update_command(speeds['vx'], speeds['vy'], speeds['w'])
+                    robot.update_command(speeds.get('vx', 0), speeds.get('vy', 0), speeds.get('w', 0))
                     robot.send_speeds_to_serial()
                 else:
                     print("Serial connection lost. Attempting to reconnect...")
                     robot.serial_connection.open()
             except serial.SerialException as e:
                 print(f"Serial error: {e}")
-                sleep(1)
+                sleep(1)  # Wait before retrying
 
             sleep(0.3)
+    except serial.SerialException as e:
+        print(f"Serial error: {e}")
     except KeyboardInterrupt:
         print("Exiting program.")
     finally:
+        if robot.serial_connection.is_open:
+            robot.serial_connection.close()
         speed_socket.close()
-        acc_socket.close()
+        if acc_flag:
+            acc_socket.close()
         context.term()
