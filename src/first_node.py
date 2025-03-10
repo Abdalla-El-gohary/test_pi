@@ -11,7 +11,7 @@ context = zmq.Context()
 publisher = context.socket(zmq.PUB)
 host_eth_ip = "10.118.142.1"
 host_ip = "192.168.66.77"
-publisher.bind("tcp://;"+host_ip+":5556")  # Bind to a port for broadcasting
+publisher.bind("tcp://"+host_ip+":5556")  # Bind to a port for broadcasting
 
 if __name__ == "__main__":
     try:
