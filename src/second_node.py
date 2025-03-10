@@ -81,6 +81,7 @@ if __name__ == "__main__":
                         
                             acc_speed = float(response)
                             speeds['vx'] = min(speeds['vx'], acc_speed)
+                            print(f"Vx: {speeds['vx']}")
                             print(f"ACC Speed: {acc_speed} cm/s")
                         
                 except zmq.Again:
