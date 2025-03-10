@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 if message == b"GET_SPEED":
                     socket.send(str(acc.current_speed).encode())
 
-            time.sleep(0.2)
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print('Stopping...')
     finally:
